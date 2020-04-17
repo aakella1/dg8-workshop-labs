@@ -18,7 +18,39 @@ import javax.ws.rs.core.Response.Status;
 @Consumes(MediaType.APPLICATION_JSON)
 @Path("/api")
 public class ScoreResource {
+    @Inject
+    ScoreService scoreService;
 
+    @POST
+    @Transactional
+    public Response create(@Valid Score item) {
+        scoreService.save(item);
+        return Response.status(Status.CREATED).entity(item).build();
+    }
+
+    @GET
+    @Path("/{id}")
+    public Object getOne(@PathParam("id") String id) {
+        Object entity = scoreService.findById(id);
+        if (entity == null) {
+            throw new WebApplicationException("ScoreCard with id of " + id + " does not exist.", Status.NOT_FOUND);
+        }
+        return entity;
+    }
+
+    @PATCH
+    @Path("/{id}")
+    @Transactional
+    public Response update(@Valid Score card, @PathParam("id") Long id) {
+        scoreService.save(card);
+        return Response.status(Status.CREATED).entity(card).build();
+
+    }
+
+    @GET
+    public List<Score> getAll() {
+        return scoreService.getAll();
+    }
 
     @OPTIONS
     public Response opt() {

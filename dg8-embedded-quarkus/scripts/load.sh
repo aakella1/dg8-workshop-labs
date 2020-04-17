@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export EP=http://localhost:8080/api
-#export EP=http://jcache-quarkus-test.apps.cluster-cph-5bcc.cph-5bcc.example.opentlc.com/api
+#export EP=http://localhost:8080/api
+export EP=http://jcache-quarkus-user5-lab-api.apps.cluster-alpha-eeb8.alpha-eeb8.sandbox811.opentlc.com/api
 
 curl --header "Content-Type: application/json" \
   --request POST \

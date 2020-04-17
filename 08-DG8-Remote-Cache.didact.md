@@ -1,0 +1,250 @@
+Remote Cache
+HotRod Client
+Hot Rod is a binary TCP protocol that Infinispan offers high-performance client-server interactions with the following capabilities: - Load balancing. Hot Rod clients can send requests across Infinispan clusters using different strategies to increase reliability. - Failover. Hot Rod clients can monitor Infinispan cluster topology changes and automatically switch to available nodes to ensure requests never go to offline nodes. - Efficient data location. Hot Rod clients can find key owners and make requests directly to those nodes, which reduces latency.
+
+RemoteCache
+RemoteCache as the name suggest is accessed remotely. The Datagrid server will host this remote cache, and clients will connect to this remote cache. From a design perspective it gives more flexibility and also allows to have central deployments with multiple caches residing in it; there by making managemetn and operations a bit more simpler.
+
+There are some symantic differences how Inifinspan/Red Hat Data Grid expose RemoteCache vs EmbeddedCache. The collection methods keySet, entrySet and values are backed by the remote cache. That is that every method is called back into the RemoteCache. This is useful as it allows for the various keys, entries or values to be retrieved lazily, and not requiring them all be stored in the client memory at once if the user does not want. These collections adhere to the Map specification being that add and addAll are not supported but all other methods are supported. One thing to note is the Iterator.remove and Set.remove or Collection.remove methods require more than 1 round trip to the server to operate. You can check out the RemoteCache Javadoc to see more details about these and the other methods.
+
+Project details
+For this example we are going to create a simple web application. it will take some input from a webform and then add the entries into the Cache. However in this case we will be using the RemoteCacheManager and we will be using ProtoStream API. All of this with a Quarkus based application.
+
+So let’s get cracking. But first lets checkout the template project.
+
+Navigate to the project dg8-quarkus-client-example This is a template project, and you will be writing code into this project. As you can see there is already some files inplace. Lets take a look into what these files are and do.
+
+The Maven dependencies
+Open the pom.xml file in the project.
+
+We will be using the following dependencies to create our service
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-resteasy</artifactId> 
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-resteasy-jsonb</artifactId> 
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-infinispan-client</artifactId>
+    </dependency>
+    <dependency>
+quarkus-resteasy; for our REST endpoint
+quarkus-resteasy-jsonb; we will use this for Json serialization for our REST endpoint
+quarkus-infinispan-client; This extension will enable us to use RemoteCache
+Protobuf
+Protobuf or Protocol Buffers are a method of serializing structured data. Protocol buffers are a flexible, efficient, automated mechanism for serializing structured data; they are much smaller and simpler in expression. You can easily write and read your structured data to and from a variety of data streams and using a variety of languages. Protobuf is all about structured data, so the first thing to do is to define the structure of your data. This is accomplished by declaring Protobuf message types in .proto files. e.g the game.proto file looks like follows.
+
+package quickstart; 
+
+message Game{ 
+    required string name = 2; 
+    required string description = 3; 
+}
+Save the above content in the following file src/main/resources/META-INF/game.proto
+
+We define a package for our entity.
+this is the name of our message. A message is similar to an entity.
+we specify that our type string name is required.
+and same for our next field description.
+Marshallers
+As described in the previous section, a fundamental concept of the Protobuf format is the definition of messages in the .proto schema to determine how an entity is represented. However, in order for our Java applications to utilise the Protobuf format to transmit/store data, it’s necessary for our Java objects to be encoded. This is handled by the ProtoStream library and its configured Marshaller implementations, which convert plain old Java objects into the Protobuf format.
+
+Although generating resources is the easiest and most performant way to utilise ProtoStream, this method might not always be viable. For example, if you are not able to modify the Java object classes to add the required annotations. For such use cases, it’s possible to manually define the .proto schema and create a manual marshaller implementation. Lets define our Marshaller; Open the GameMarshaller class
+
+Add the following method to our GameMarshaller. In the following code we specify how we are going to read from our ProtoStream. We could add any additional processing on the stream if we wanted to. For now we take a simplified read and return a Game Object. Hence everytime a stream is read from the Cache, this method will be called.
+
+    @Override
+    public Game readFrom(MessageMarshaller.ProtoStreamReader reader) throws IOException {
+        String name = reader.readString("name");
+        String description = reader.readString("description");
+        return new Game(name, description);
+    }
+Next we can also define a writer method. It takes a Game object and translates that into a stream.
+
+    @Override
+    public void writeTo(MessageMarshaller.ProtoStreamWriter writer, Game game) throws IOException {
+        writer.writeString("name", game.getName());
+        writer.writeString("description", game.getDescription());
+    }
+Lets specify which class handles our Stream data.
+
+    @Override
+    public Class<? extends Game> getJavaClass() {
+        return Game.class;
+    }
+And finally here we let the Serialization process know what type we are doing this for. i.e. packagename.Class
+
+    @Override
+    public String getTypeName() {
+        return "quickstart.Game";
+    }
+Perfect we have our Marshaller configured.
+
+Configuring our RemoteCache
+Let’s move on and create our RemoteCache configuration
+
+For this open the Init.java and add the following member variables to it.
+
+    public static final String GAME_CACHE = "games"; 
+
+    @Inject
+    RemoteCacheManager cacheManager; 
+
+    private static final String CACHE_CONFIG = 
+            "<infinispan><cache-container>" +
+                    "<distributed-cache name=\"%s\"></distributed-cache>" +
+                    "</cache-container></infinispan>";
+First we specify a class level variable which is the name of our Cache.
+We inject the cacheManager to our file. We only want to load the CacheManager once, and since its a heavy object, we want to do it at startup.
+As we learnt in the previous section we can also configure a cache with xml, we are exactly doing that here. We could have also loaded this from a file META-INF but for a short demo this works okay.
+    void onStart(@Observes @Priority(value = 1) StartupEvent ev) {
+        String xml = String.format(CACHE_CONFIG, "games"); 
+        cacheManager.administration().getOrCreateCache(GAME_CACHE, new XMLStringConfiguration(xml)); 
+    }
+You might remember the onStart from our previous lab. We are doing the same thing here. <1> we use the xml defined in a String and pass it on to the Red Hat Data Grid server to parse it and create a new cache called games <2> then we ask the cacheManager to get the Cache for us or create a new one if it doesnt exist.
+
+By now we should have a RemoteCacheManager configured, all we need to do now is to inject it in out REST resource.
+
+REST endpoint
+Open up the GameResource.java, this is our REST resource file use the resteasy dependencies.
+
+In the following code we inject or RemoteCache, and we specify which Remote cache we want by passing the variable GAME_CACHE to it, which we have initialized previously in our Init.java Add this code to the GameResource.java
+
+    @Inject
+    @Remote(GAME_CACHE)
+    RemoteCache<String, Game> gameStore;
+The following are two simple GET and POST method implementation.
+
+    @GET
+    public Set<Game> list() {
+        return new HashSet<>(gameStore.values());
+    }
+
+    @POST
+    public Set<String> add(Game game) {
+        gameStore.putAsync(game.getName(), game);
+        return gameStore.keySet();
+    }
+the list method is simply posting back a HashSet back to the front-end
+and here the add method is using the Async api of infinispan/Red Hat Data Grid to add the entry into the cache.
+Perfect. We are all set to deploy our application to Openshift and see how the RemoteCache will work.
+
+Deploying to Openshift and scaling
+Lets prepare to deploy the application to Openshift
+
+For this open up the application.properties located at src/main/resources/application.properties
+
+quarkus.infinispan-client.server-list=datagrid-service:11222
+quarkus.infinispan-client.client-intelligence=BASIC
+quarkus.infinispan-client.auth-username=developer
+quarkus.infinispan-client.auth-password=
+
+
+quarkus.http.cors=true
+
+# Openshift extension settings.
+quarkus.openshift.expose=true 
+
+# if you dont set this and dont have a valid cert the deployment wont happen
+
+quarkus.kubernetes-client.trust-certs=true
+Sets the host name/port to connect to. Each one is separated by a semicolon (eg. host1:11222;host2:11222)
+Sets client intelligence used by authentication , in our case its basic, since we deployed a minimal server config
+Sets user name used by authentication, in our case its developer, thats the default from the operator.
+Sets password used by authentication, we do not have this yet. we will find it out from the secrets.
+we make sure that our applications route will be exposed once its deployed.
+Finally we also put this property to true, incase our server does not have trusted certificates, which in our case can be true, since we are in a demo denvironment.
+Lets go fill that password field in the above properties file.
+
+Run the following command on the terminal and the password will be shown, then copy that password and add it to the password field quarkus.infinispan-client.auth-password=.
+
+    oc get secret datagrid-service-generated-secret -o jsonpath="{.data.identities\.yaml}" | base64 --decode
+Save the application.properties file.
+
+Lets go ahead and deploy the application to openshift. Now go to your MyWorkspace menu and Login to Openshift.
+
+Perfect everything is inorder.
+
+Lets first create an image namespace for our application
+
+mvn clean package -Dquarkus.container-image.build=true
+You should see a build successful message at the end. That mean everything worked out.
+
+Now lets deploy our application to Openshift
+
+mvn clean package -Dquarkus.kubernetes.deploy=true
+Also remmember next time we need to deploy we just need to run the above deploy command again. thats all!
+
+Lets wait for this build to be successfull!
+
+Now navigate to the openshift console
+
+![Diagram](docs/images/gameserviceocp)
+
+And click on the resources/routes to navigate to the application
+
+![Diagram](docs/images/gamerestservice)
+
+Enabling Near Cache
+Near caches are optional caches for Hot Rod Java client implementations that keep recently accessed data close to the user, providing faster access to data that is accessed frequently. This cache acts as a local Hot Rod client cache that is updated whenever a remote entry is retrieved via get or getVersioned operations.
+
+In Red Hat JBoss Data Grid, near cache consistency is achieved by using remote events, which send notifications to clients when entries are modified or removed (refer to Remote Event Listeners (Hot Rod)). With Near Caching, local cache remains consistent with remote cache. Local entry is updated or invalidated whenever remote entry on the server is updated or removed. At the client level, near caching is configurable as either of the following:
+
+DISABLED - the default mode, indicating that Near Caching is not enabled.
+
+INVALIDATED - enables near caching, keeping it in sync with the remote cache via invalidation messages.
+
+![Diagram](docs/images/nearcache)
+
+Near Caching
+When should I use it? Near caching can improve the performance of an application when most of the accesses to a given cache are read-only and the accessed dataset is relatively small. When an application is doing lots of writes to a cache, invalidations, evictions and updates to the near cache need to happen. In such a scenario near cache wont be beneficial.
+
+For Quarkus, near caching is disabled by default, but you can enable it by setting the profile config property quarkus.infinispan-client.near-cache-max-entries to a value greater than 0. You can also configure a regular expression so that only a subset of caches have near caching applied through the quarkus.infinispan-client.near-cache-name-pattern attribute.
+
+Add the following properties to application.properties to enable near caching.
+
+infinispan.client.hotrod.near_cache.mode=INVALIDATED
+
+infinispan.client.hotrod.near_cache.max_entries=40
+
+infinispan.client.hotrod.near_cache.cache_name_pattern=*i8n-.
+Lets go ahead and deploy the application to openshift.
+
+mvn clean package -Dquarkus.kubernetes.deploy=true
+You should see a Build Successful message from this run as well.
+
+Notice that any entries that you might have added to the cache prior to this deployment, they are still there, that wasnt the case in the embedded cache, since we were not using any stores and everytime the application started the cache was empty. But in this case since the cache is remote, you will still see the entries from last time. Its important to note that there are different ways you can configure and setup the cache. For more details visit the Documenatation pages for Red Hat Data Grid.
+
+Caching with Hibernate and JPA and Quarkus
+When using Hibernate ORM in Quarkus, you don’t need to have a persistence.xml resource to configure it. Using such a classic configuration file is an option, but unnecessary unless you have specific advanced needs; so we’ll see first how Hibernate ORM can be configured without a persistence.xml resource.
+
+In Quarkus, you just need to: - add your configuration settings in application.properties - annotate your entities with @Entity and any other mapping annotation as usual
+
+Other configuration needs have been automated: Quarkus will make some opinionated choices and educated guesses.
+
+package org.acme;
+
+@Entity
+@Cacheable
+public class Country {
+    // ...
+
+    @OneToMany
+    @Cache(usage = CacheConcurrencyStrategy.READ_ONLY)
+    List<City> cities;
+
+    // ...
+}
+In the above code just using the @Cacheable annotation will make sure that inifinspan is used as the Second Level Cache for the entities. Also you don’t need to pick an implementation. A suitable implementation based on technologies Infinispan is included as a transitive dependency of the Hibernate ORM extension, and automatically integrated during the build.
+
+Recap
+You learnt about RemoteCache and HotRod client
+You learnt about Protostream and marshallers in Infinispan
+You deployed you for Quarkus app using RemoteCache.
+You learnt about near caching and its usecase
+And finally we sum it up with JPA and Second Level Cache
+*Congratulations!! you have completed the this lab on RemoteCache. Lets move to the next lab and learn how we can use the new REST API in DataGrid to our advantage.

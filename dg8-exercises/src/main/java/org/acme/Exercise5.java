@@ -15,7 +15,6 @@ public class Exercise5 {
 
     public static void main(String[] args) throws Exception {
 
-        /* UNCOMMENT When starting this exercise
 
         // Construct a local cache manager
         DefaultCacheManager cacheManager = new DefaultCacheManager();
@@ -28,11 +27,14 @@ public class Exercise5 {
                 .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
                 .getOrCreateCache("cache", cacheConfig);
         
-        //TODO Obtain the transaction manager
-
+    //TODO Obtain the transaction manager
+    TransactionManager transactionManager = cache.getAdvancedCache().getTransactionManager();
         
         // TODO Perform some operations within a transaction and commit it
-
+        transactionManager.begin();
+        cache.put("key1", "value1");
+        cache.put("key2", "value2");
+        transactionManager.commit();
         
 
 
@@ -40,7 +42,10 @@ public class Exercise5 {
         System.out.printf("key1 = %s\nkey2 = %s\n", cache.get("key1"), cache.get("key2"));
         
         //TODO Perform some operations within a transaction and roll it back
-
+        transactionManager.begin();
+        cache.put("key1", "value3");
+        cache.put("key2", "value4");
+        transactionManager.rollback();
         
         // Display the current cache contents
         System.out.printf("key1 = %s\nkey2 = %s\n", cache.get("key1"), cache.get("key2"));
@@ -49,7 +54,6 @@ public class Exercise5 {
         cacheManager.stop();
 
 
-        UNCOMMENT When starting this exercise */
     }
 
 }
