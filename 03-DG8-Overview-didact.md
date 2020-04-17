@@ -10,7 +10,8 @@ With the latest release of Red Hat Data Grid, now you can also use it with an Op
 
 Try some of the following documentation to create a Data Grid Operator subscription and get running in OpenShift: Getting Started with Data Grid Operator Running Data Grid for OpenShift
 
-A new server architecture
+# A new server architecture
+
 Cloud and Container Native Data Grid needs to be a reduced footprint, and that’s what the latest version of Red Hat Data Grid brings. It reduces both the disk footprint and initial heap size upto 50%, leaving more memory for your data. You can now run the server without the Red Hat JBoss Enterprise Application Platform (EAP), ensuring a lower memory and disk footprint also simplifies configuration.
 
 Moreover, Data Grid 8.0 servers provide several enhancements and improvements to security, including integration with Red Hat SSO and a smaller attack surface.
@@ -56,30 +57,32 @@ Now getting back to our primary question, how much data should you store in memo
 
 Once a cache is remote, we also want some of the distributed features, e.g. monitoring. Lets take a look at some of the caching strategies.
 
-Local cache
+## Local cache
 The primary use for Red Hat Data Grid is to provide a fast in-memory cache of frequently accessed data. Suppose you have a slow data source (database, web service, text file, etc): you could load some or all of that data in memory so that it’s just a memory access away from your code. Using Red Hat Data Grid is better than using a simple ConcurrentHashMap. By setting up an embedded cache, Red Hat Dat Grid also allows you to tap into more features e.g. expiration, eviction, events on the cache etc. All make out a much better way of handling your cache and component design. Moreover if you would want to cluster such a cache that is also easily possible.
 
-As a clustered cache
+## As a clustered cache
 So lets assume you started with a local embedded cache in your application, and now you suddenly realize that one instance of your application is not enough to handle the load from your users or systems. What do you do? With Red Hat Data Grid you can now scale that cache into a cluster. You dont need to change how you use your cache, but adding a few additonal config params you can now have a clustered cache and there by having muliptle instances of your application listenting to the same coherent cache. Events will be fired accorss the clusters, your eviction and expiration will happen accorss the cluster. And most over, you now even have the possiblity to distribute your keys accross the cluster. Red Hat Data Grid can scale horizontally to hundreds of nodes.
 
-As a remote cache
+## As a remote cache
 Lets just say you used the clusterd cache, and embedded it in your application, which means that everytime a new instance of your application started you would have a new instance of your embedded cache ready to become part of the cluster. Now this is all great. But what if, you dont want that clustering in your application. rather then you might want to use a component outside of your applications lifecycle. Or you would want to share this cache accross multiple applications. In that case the Red Hat Data Grid could be used as a remote data grid. Now you can access your cache via multiple programming runtimes. e.g. Vert.x, Quarkus, NodeJS, C#, C/C++ etc. And your cache lifecycle will be independant of the applications life cycle, which is a great advantage in many cases.
 
-Congratulations! By now you understand the different patterns of caching, and the requirements. Lets go ahead and create our first application and learn how we can use Red Hat Data Grid to achieve caching. Press next!
+## Congratulations! 
 
-Additional Resources:
+By now you understand the different patterns of caching, and the requirements. Lets go ahead and create our first application and learn how we can use Red Hat Data Grid to achieve caching. Press next!
+
+## Additional Resources:
 Traditional zip deployments are available on the Customer Portal.
 
 The container distribution and operator are available in the Red Hat Container Catalog
 
-Product documentation is available here
+- Product documentation is available here
 
-Getting Started Guide that will get you running with RHDG 8 in 5 minutes.
+- Getting Started Guide that will get you running with RHDG 8 in 5 minutes.
 
-Migration Guide
+- Migration Guide
 
-Starter Tutorials
+- Starter Tutorials
 
-Supported Components
+- Supported Components
 
-Supported Configurations
+- Supported Configurations

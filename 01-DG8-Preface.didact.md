@@ -1,4 +1,6 @@
-Preface - What happens when you run your applications distributed, scaled and in the cloud …​
+# Preface
+
+What happens when you run your applications distributed, scaled and in the cloud …​
 You are a developer or an architect creating world-class applications and solutions. Well, all applications don’t necessarily live in just one box, and for the recent past, Cloud is not just one more computer but a lot more. All applications use a network to speak to each other, whether they speak to a database, a web service or storage, or other services. That’s the world we all live in!
 
 Creating a distributed application means you care about latency, performance, and, most importantly, the responsiveness to your end-users. End users could be systems or humans; whats important is that you have a timely and consistent response. If that’s the challenging world we all live in, don’t worry, there are a lot many things one can do to optimize the stack. Most importantly, this workshop focuses on one thing i.e. Red Hat Data Grid.
@@ -13,20 +15,20 @@ This is a BYOL (Bring Your Own Laptop) session. You will be provided with a Code
 
 What you are going to learn:
 
-What is Red Hat Data Grid 8.0
+- What is Red Hat Data Grid 8.0
 
-What is a Cache, and how to start with the common usecases
+- What is a Cache, and how to start with the common usecases
 
-What is an Embedded Cache
+- What is an Embedded Cache
 
-What is Clustering in a Cache scenario and how it works
+- What is Clustering in a Cache scenario and how it works
 
-What is a Remote Cache and how to take benefit of Red Hat Data Grid
+- What is a Remote Cache and how to take benefit of Red Hat Data Grid
 
-You will build applications with known frameworks like Quarkus and Spring
+- You will build applications with known frameworks like Quarkus and Spring
 
-You will learn hot to use Red Hat Data Grid server REST API.
+- You will learn hot to use Red Hat Data Grid server REST API.
 
-You will learn how to externalize sessions
+- You will learn how to externalize sessions
 
-And many more…​
+- And many more…​
